@@ -3,7 +3,7 @@
   "short_name": "Miraise",
   "description": "Miraise CAFE & BAR の営業日・貸切カレンダー",
   "lang": "ja",
-  "start_url": "./",
+  "start_url": "./?source=homescreen",
   "scope": "./",
   "display": "standalone",
   "background_color": "#082550",
