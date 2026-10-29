@@ -59,9 +59,9 @@
      ・「×」は3日間、「追加済み」は30日間だけ表示を止める（iPhoneは追加の有無を確認できないため） */
   const ua = navigator.userAgent;
   const params = new URLSearchParams(location.search);
+  // ホーム画面のアプリとして起動しているか（アプリ内ブラウザを誤って「アプリ」と判定しないよう、確実な条件だけで判定）
   const standalone = params.get('source') === 'homescreen' || navigator.standalone === true ||
-    ['standalone', 'fullscreen', 'minimal-ui'].some(function (m) { return window.matchMedia('(display-mode: ' + m + ')').matches; }) ||
-    document.referrer.indexOf('android-app://') === 0;
+    window.matchMedia('(display-mode: standalone)').matches;
   const isIOS = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && 'ontouchend' in document);
   const isLINE = / Line\//i.test(ua);
   const isAndroid = /Android/i.test(ua);
@@ -95,7 +95,7 @@
   function guideText() {
     if (isLINE) return '<b>ホーム画面に追加するには</b>右上のメニューから「' + (isIOS ? 'Safari' : 'ブラウザ') + 'で開く」を選んでください';
     if (isIOS) return '<b>ホーム画面に追加</b>画面下の共有ボタン ' + shareIcon + ' から「ホーム画面に追加」を選んでください';
-    if (isAndroid) return '<b>ホーム画面に追加</b>右上のメニュー（︙）から「ホーム画面に追加」または「アプリをインストール」を選んでください';
+    if (isAndroid) return '<b>ホーム画面に追加</b>右上のメニュー（︙）から「ホーム画面に追加」または「アプリをインストール」を選んでください。見当たらない場合は、先に「Chromeで開く」を選んでください';
     return '';
   }
 
