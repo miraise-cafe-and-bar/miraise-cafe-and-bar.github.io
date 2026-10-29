@@ -1,6 +1,6 @@
 {
-  "name": "Miraise 営業カレンダー",
-  "short_name": "Miraise",
+  "name": "Cafe営業カレンダー｜Miraise CAFE & BAR",
+  "short_name": "Cafe営業カレンダー",
   "description": "Miraise CAFE & BAR の営業日・貸切カレンダー",
   "lang": "ja",
   "start_url": "./?source=homescreen",
@@ -8,9 +8,30 @@
   "display": "standalone",
   "background_color": "#082550",
   "theme_color": "#082550",
+  "related_applications": [
+    {
+      "platform": "webapp",
+      "url": "https://miraise-cafe-and-bar.github.io/manifest.webmanifest"
+    }
+  ],
   "icons": [
-    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
   ]
 }
