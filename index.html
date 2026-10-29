@@ -72,12 +72,14 @@
     del: function (k) { try { localStorage.removeItem(k); } catch (e) {} }
   };
   ['a2hs-done', 'a2hs-count', 'a2hs-dismissed'].forEach(store.del); // 旧版の「二度と表示しない」記録を削除
+  const mode = params.get('a2hs'); // ?a2hs=reset で表示停止の記録を消す／?a2hs=debug で状態を表示
   function snoozeType() {
     const until = Number(store.get('a2hs-until') || 0);
     return Date.now() < until ? store.get('a2hs-type') : null;
   }
   function snooze(type, days) { store.set('a2hs-type', type); store.set('a2hs-until', String(Date.now() + days * 864e5)); }
   function unsnooze() { store.del('a2hs-type'); store.del('a2hs-until'); }
+  if (mode === 'reset' || mode === 'debug') unsnooze();
 
   let deferred = null, timer = null, shown = false;
   function hide() { box.hidden = true; clearTimeout(timer); }
@@ -112,15 +114,25 @@
   };
   document.getElementById('a2hsClose').onclick = function () { snooze('x', 3); hide(); };
 
+  function debugInfo(installed) {
+    if (mode !== 'debug') return;
+    const info = '【確認用】ホーム画面から起動:' + (standalone ? 'はい' : 'いいえ') +
+      '／端末:' + (isIOS ? 'iPhone' : isAndroid ? 'Android' : 'その他') + (isLINE ? '（LINE内）' : '') +
+      '／追加済み判定:' + installed + '／インストール合図:' + (deferred ? 'あり' : 'なし');
+    box.hidden = false; shown = true;
+    text.innerHTML = (text.innerHTML || '<b>ホーム画面に追加</b>' + guideText().replace(/^<b>[^<]*<\/b>/, '')) +
+      '<small style="display:block;margin-top:6px;color:#b5485d;font-size:10px;line-height:1.5">' + info + '</small>';
+  }
   setTimeout(function () {
-    if (standalone || deferred || shown || snoozeType()) return;
-    const go = function () { const t = guideText(); if (t) show(t, false); };
+    if (standalone) { debugInfo('—'); return; }
+    if (deferred || shown || snoozeType()) { debugInfo(snoozeType() ? '表示停止中(' + snoozeType() + ')' : '—'); return; }
+    const go = function (installed) { const t = guideText(); if (t) show(t, false); debugInfo(installed); };
     if (isAndroid && navigator.getInstalledRelatedApps) {
       navigator.getInstalledRelatedApps().then(function (apps) {
-        if (apps && apps.length) return;          // インストール済み → 表示しない
-        go();
-      }).catch(go);
-    } else go();
+        if (apps && apps.length) { debugInfo('インストール済みと判定'); return; } // インストール済み → 表示しない
+        go('未インストール');
+      }).catch(function () { go('確認できず'); });
+    } else go('確認できない端末');
   }, 2500);
 </script>
 </body>
