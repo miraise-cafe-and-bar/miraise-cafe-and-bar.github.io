@@ -12,9 +12,235 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Cafe営業カレンダー">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;0,700;1,600&family=Noto+Serif+JP:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
-  html,body{margin:0;height:100%;background:#f5f5f1;font-family:'Hiragino Mincho ProN','Yu Mincho','Noto Serif JP',serif}
-  #app{position:fixed;inset:0;width:100%;height:100%;border:0;background:#f5f5f1}
+  :root{
+    --navy:#1f2f8f; --navy-d:#16226b; --paper:#ffffff; --bg:#f5f5f1; --line:#e1e5f2;
+    --soft:#eef1fa; --gold:#a8844a; --rose:#b5485d; --rose-l:#fbeef1; --mute:#8a90a8;
+    --en:'Cormorant Garamond','Times New Roman',serif;
+    --ja:'Noto Serif JP','Hiragino Mincho ProN','Yu Mincho',serif;
+    /* 縁取りのタイル柄（青×白の七宝・花模様） */
+    --tile:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' fill='%231f2f8f'/%3E%3Cg fill='none' stroke='%23fff' stroke-width='2'%3E%3Ccircle cx='0' cy='0' r='20'/%3E%3Ccircle cx='40' cy='0' r='20'/%3E%3Ccircle cx='0' cy='40' r='20'/%3E%3Ccircle cx='40' cy='40' r='20'/%3E%3Ccircle cx='20' cy='20' r='20'/%3E%3C/g%3E%3Cg fill='%23fff'%3E%3Cellipse cx='20' cy='3.5' rx='2.2' ry='4.5'/%3E%3Cellipse cx='20' cy='36.5' rx='2.2' ry='4.5'/%3E%3Cellipse cx='3.5' cy='20' rx='4.5' ry='2.2'/%3E%3Cellipse cx='36.5' cy='20' rx='4.5' ry='2.2'/%3E%3Ccircle cx='20' cy='20' r='5.5'/%3E%3Ccircle cx='0' cy='0' r='5.5'/%3E%3Ccircle cx='40' cy='0' r='5.5'/%3E%3Ccircle cx='0' cy='40' r='5.5'/%3E%3Ccircle cx='40' cy='40' r='5.5'/%3E%3C/g%3E%3Cg fill='%231f2f8f'%3E%3Ccircle cx='20' cy='20' r='2.4'/%3E%3Ccircle cx='0' cy='0' r='2.4'/%3E%3Ccircle cx='40' cy='0' r='2.4'/%3E%3Ccircle cx='0' cy='40' r='2.4'/%3E%3Ccircle cx='40' cy='40' r='2.4'/%3E%3C/g%3E%3C/svg%3E");
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{-webkit-text-size-adjust:100%}
+  body{background:var(--bg);color:var(--navy);font-family:var(--ja);padding:16px 12px 32px;line-height:1.5}
+  .wrap{max-width:480px;margin:0 auto}
+
+  /* ブランド */
+  .brand{text-align:center;padding:6px 0 16px}
+  .brand .shop{font-family:var(--en);font-style:italic;font-weight:600;font-size:38px;line-height:1}
+  .brand .sub{font-family:var(--en);font-weight:700;font-size:11px;letter-spacing:.5em;padding-left:.5em;margin-top:6px;color:var(--gold)}
+  .brand .ttl{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:10px;font-size:13px;font-weight:600;letter-spacing:.3em;padding-left:.3em}
+  .brand .ttl::before,.brand .ttl::after{content:"";width:28px;height:1px;background:currentColor;opacity:.45}
+
+  /* 本日の営業の下のお知らせ：表示中の月と期間が重なり、まだ終わっていないものだけ */
+  function renderNotices() {
+    const mo = DATA.months[cur];
+    const from = keyOf(mo, mo.days[0]), to = keyOf(mo, mo.days[mo.days.length - 1]);
+    const list = (DATA.notices || []).filter(function (n) {
+      return n.from <= to && n.to >= from && n.to >= DATA.today;
+    });
+    document.getElementById('todayNotice').innerHTML = noticeCards(list);
+  }
+
+  /* 月切替 */
+  .tabs{position:sticky;top:0;z-index:5;display:flex;gap:8px;padding:8px 0;background:var(--bg)}
+  .tabs button{flex:1;appearance:none;border:1px solid var(--navy);background:var(--paper);color:var(--navy);font-family:var(--ja);font-size:15px;font-weight:700;padding:10px 0;border-radius:999px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+  .tabs button small{font-family:var(--en);font-style:italic;font-weight:600;font-size:13px;margin-left:4px;opacity:.75}
+  .tabs button.on{background:var(--navy);color:#fff}
+
+  .sec{margin-top:14px}
+  .sec-h{display:flex;align-items:baseline;gap:8px;margin-bottom:8px;padding-left:2px}
+  .sec-h b{font-family:var(--en);font-style:italic;font-weight:600;font-size:19px}
+  .sec-h span{font-size:11px;font-weight:600;letter-spacing:.15em;color:var(--mute)}
+
+  /* 営業時間 */
+  .hours{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .hcard{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:12px 12px 10px;display:flex;flex-direction:column;gap:2px}
+  .hcard .t{display:flex;align-items:center;gap:6px;font-weight:700;font-size:14px}
+  .hcard .t svg{width:22px;height:22px}
+  .hcard .tm{font-family:var(--en);font-weight:700;font-size:19px;letter-spacing:.01em;line-height:1.2;margin-top:2px}
+  .hcard .lo{font-size:11px;color:var(--mute)}
+
+  /* 本日の営業 */
+  .today-box{background:var(--navy);color:#fff;border-radius:10px;padding:14px 14px 12px}
+  .today-box .dt{display:flex;align-items:baseline;gap:8px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,.25)}
+  .today-box .dt b{font-family:var(--en);font-size:24px;font-weight:700;line-height:1}
+  .today-box .dt span{font-size:12px;opacity:.8}
+  .today-box ul{list-style:none;margin-top:6px}
+  .today-box li{display:flex;align-items:center;gap:10px;padding:6px 0;font-size:14px}
+  .today-box li svg{width:22px;height:22px;flex:none}
+  .today-box .lbl{width:52px;font-weight:700;white-space:nowrap}
+  .today-box .tm{flex:1;font-family:var(--en);font-size:17px;font-weight:600}
+  .st{font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px;white-space:nowrap}
+  .st.ok{background:#fff;color:var(--navy)}
+  .st.no{border:1px solid rgba(255,255,255,.5);color:rgba(255,255,255,.75)}
+  .st.pv{background:var(--rose);color:#fff}
+  .today-box .ic-w svg{color:#fff}
+  .today-box .closed{text-align:center;padding:10px 0 4px;font-size:14px;opacity:.9}
+
+  /* 営業カレンダー（タイル柄の額縁） */
+  .frame{margin-top:18px;padding:18px;background-image:var(--tile);background-size:36px 36px;background-position:center;border-radius:4px;box-shadow:0 6px 18px rgba(31,47,143,.15)}
+  .panel{background:var(--paper);padding:16px 8px 12px}
+  .mhead{display:flex;align-items:flex-end;justify-content:center;gap:10px;margin-bottom:12px}
+  .mhead .num{font-family:var(--en);font-weight:700;font-size:58px;line-height:.82}
+  .mhead .en{font-family:var(--en);font-style:italic;font-weight:600;font-size:21px;line-height:1}
+  .mhead .yr{display:block;font-style:normal;font-size:12px;letter-spacing:.25em;opacity:.6;margin-bottom:3px}
+  .dow{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;font-weight:700;font-size:13px;padding-bottom:6px;border-bottom:1.5px solid var(--navy)}
+  .dow .sa,.dow .su{color:var(--rose)}
+  .grid{display:grid;grid-template-columns:repeat(7,1fr)}
+  .cell{min-height:70px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 1px 5px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+  .cell.empty{cursor:default}
+  .cell:not(.empty):active{background:var(--soft)}
+  .n{font-family:var(--en);font-weight:700;font-size:19px;line-height:26px;width:27px;height:27px;text-align:center;border-radius:50%}
+  .red .n{color:var(--rose)}
+  .today .n{background:var(--navy);color:#fff}
+  .past{opacity:.35}
+  .icons{display:flex;gap:1px;height:17px;align-items:center}
+  .icons svg{width:17px;height:17px}
+  .off{font-size:10px;color:var(--mute)}
+  .pill{display:flex;flex-direction:column;align-items:center;background:var(--rose);color:#fff;border-radius:4px;padding:2px 3px 2px;line-height:1.1;min-width:36px}
+  .pill .k{font-size:9px;font-weight:700;letter-spacing:.05em}
+  .pill .t{font-family:var(--en);font-size:11px;font-weight:700;white-space:nowrap}
+  .more{font-size:9px;font-weight:700;color:var(--rose);line-height:1}
+  
+  .key{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 14px;margin-top:10px;font-size:11px;color:var(--mute)}
+  .key span{display:flex;align-items:center;gap:4px}
+  .key svg{width:16px;height:16px}
+  .key .mini{background:var(--rose);color:#fff;font-size:9px;font-weight:700;padding:2px 5px;border-radius:3px}
+  .tap{text-align:center;font-size:11px;color:var(--mute);margin-top:6px}
+
+  /* 貸切のお知らせ */
+  .plist{background:var(--paper);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .plist li{list-style:none;display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-top:1px solid var(--line);font-size:14px;font-weight:600}
+  .plist li:first-child{border-top:none}
+  .plist li .t{display:flex;align-items:center;gap:8px;font-family:var(--en);font-size:18px;font-weight:700;color:var(--rose)}
+  .plist li .t i{font-style:normal;font-family:var(--ja);font-size:10px;background:var(--rose);color:#fff;padding:2px 6px;border-radius:3px}
+  .plist .none{padding:16px;text-align:center;font-size:13px;color:var(--mute)}
+
+  .note{text-align:center;font-size:12px;line-height:1.8;margin-top:16px;white-space:pre-wrap}
+  .foot{text-align:center;font-family:var(--en);font-weight:700;font-size:11px;letter-spacing:.4em;padding-left:.4em;color:var(--mute);margin-top:22px}
+
+  /* 日付タップ時の詳細（下から表示） */
+  .sheet-bg{position:fixed;inset:0;background:rgba(15,22,70,.45);opacity:0;pointer-events:none;transition:opacity .2s;z-index:20}
+  .sheet{position:fixed;left:0;right:0;bottom:0;z-index:21;background:var(--paper);border-radius:16px 16px 0 0;padding:10px 18px calc(22px + env(safe-area-inset-bottom));transform:translateY(100%);visibility:hidden;transition:transform .25s ease,visibility 0s .25s;max-width:480px;margin:0 auto}
+  .open .sheet-bg{opacity:1;pointer-events:auto}
+  .open .sheet{transform:none;visibility:visible;transition:transform .25s ease}
+  .sheet .grab{width:40px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 12px}
+  .sheet .dt{display:flex;align-items:baseline;gap:8px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+  .sheet .dt b{font-family:var(--en);font-size:26px;font-weight:700;line-height:1}
+  .sheet .dt span{font-size:12px;color:var(--mute)}
+  .sheet ul{list-style:none;margin-top:6px}
+  .sheet li{display:flex;align-items:center;gap:10px;padding:9px 0;font-size:14px;border-bottom:1px solid var(--line)}
+  .sheet li svg{width:22px;height:22px;flex:none}
+  .sheet .lbl{width:52px;font-weight:700;white-space:nowrap}
+  .sheet .tm{flex:1;font-family:var(--en);font-size:17px;font-weight:600}
+  .sheet .st.ok{background:var(--navy);color:#fff}
+  .sheet .st.no{border:1px solid var(--line);color:var(--mute)}
+  .sheet .pvrow{background:var(--rose-l);border-radius:8px;padding:10px;margin-top:8px;border:none}
+  .sheet .pvrow small{display:block;font-family:var(--ja);font-size:11px;color:var(--rose);font-weight:500}
+  .sheet .close{display:block;width:100%;margin-top:14px;padding:12px;border:1px solid var(--navy);background:var(--paper);color:var(--navy);border-radius:999px;font-family:var(--ja);font-size:14px;font-weight:700}
+
+  /* アイコンの色 */
+  .i-lunch,.i-navy{color:var(--navy)} .i-bar,.i-gold{color:var(--gold)} .i-rose{color:var(--rose)} .i-off{color:var(--mute)}
+  .icons.n3 svg{width:14px;height:14px}
+  .ctext{font-size:9.5px;font-weight:600;line-height:1.25;text-align:center;color:var(--navy);word-break:break-all;padding:0 2px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .inforow svg{width:22px;height:22px;flex:none}
+  .inforow .info{flex:1;display:flex;flex-direction:column}
+  .inforow .info b{font-size:14px}
+  .inforow .info small{font-size:12px;font-weight:500;opacity:.85;line-height:1.6}
+  .today-box .closed{display:flex;align-items:center;justify-content:center;gap:8px}
+  .today-box .closed svg{width:22px;height:22px}
+  .sheet .inforow{background:var(--soft);border-radius:8px;padding:10px;margin-top:8px;border:none}
+
+  /* ── v4 追加・調整 ── */
+  body{font-variant-numeric:lining-nums tabular-nums;font-feature-settings:"lnum" 1,"tnum" 1}
+  .n,.tm,.mhead .num,.pill .t,.plist li .t,.dt b,.hcard .tm{font-variant-numeric:lining-nums tabular-nums;font-feature-settings:"lnum" 1,"tnum" 1}
+  .tl{display:inline-block;font-family:var(--ja);font-weight:500;font-size:.72em;margin:0 .18em;transform:translateY(-.12em)}
+  .n{display:flex;align-items:center;justify-content:center;line-height:1;padding-top:1px}
+  .tm,.hcard .tm,.plist li .t{display:inline-flex;align-items:center;line-height:1.1}
+  .tm small{display:block}
+  .sheet .tm,.today-box .tm{flex-wrap:wrap}
+  .pvrow .tm{display:block}
+  .pill .t{display:flex;align-items:center;line-height:1.15}
+  .pill .t .tl{font-size:.8em;margin:0 .05em;transform:translateY(-.05em)}
+  .offb{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:#2b2f45;color:#fff;font-family:var(--ja);font-weight:700;font-size:12px;line-height:1;flex:none;box-shadow:0 0 0 2px #fff,0 0 0 3.5px #2b2f45}
+  .cell.off{background:repeating-linear-gradient(135deg,#f1f2f6 0 6px,#e8eaf1 6px 12px)}
+  .cell.off .n{color:#6b708a}
+  .icons .offb{width:20px;height:20px;font-size:11px}
+  .key .offb{width:16px;height:16px;font-size:9px;box-shadow:none}
+  .today-box .closed{font-weight:700}
+  .today-box .closed .offb{box-shadow:0 0 0 2px var(--navy),0 0 0 3.5px #fff}
+  .sheet .dt .offb{margin-left:auto}
+  .sheet{max-height:88vh;overflow-y:auto}
+  .plist li .d small{font-size:11px}
+  .plist li .tt{display:inline-flex;align-items:center}
+  #todayNotice:not(:empty){margin-top:10px;display:flex;flex-direction:column;gap:10px}
+  .notice{background:var(--paper);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .notice img{display:block;width:100%;height:auto;max-height:320px;object-fit:cover;background:var(--soft)}
+  .notice .nb{padding:12px 14px 14px}
+  .notice .np{display:inline-flex;align-items:center;font-family:var(--en);font-weight:700;font-size:13px;color:var(--gold);letter-spacing:.04em}
+  .notice h4{font-size:15px;font-weight:700;margin-top:2px;line-height:1.5}
+  .notice p{font-size:13px;line-height:1.8;margin-top:4px;white-space:pre-wrap}
+  .sheet .notice{margin-top:12px}
+
+  .offi{display:inline-flex;align-items:center;justify-content:center;width:21px;height:21px;border-radius:50%;background:#2b2f45;flex:none}
+  .offi svg{width:17px;height:17px}
+  .key .offi{width:16px;height:16px} .key .offi svg{width:11px;height:11px}
+
+
+  /* 月切替（スライドするセグメント） */
+  .tabs .seg{flex:1;position:relative;display:grid;grid-template-columns:repeat(var(--n),1fr);background:var(--paper);border:1px solid var(--navy);border-radius:999px;padding:3px;box-shadow:0 2px 8px rgba(31,47,143,.08)}
+  .tabs .seg .ind{position:absolute;top:3px;bottom:3px;left:3px;width:calc((100% - 6px) / var(--n));border-radius:999px;background:var(--navy);transform:translateX(calc(var(--i) * 100%));transition:transform .35s cubic-bezier(.2,.8,.2,1)}
+  .tabs .seg button{position:relative;z-index:1;flex:none;border:0;background:none;border-radius:999px;padding:9px 0;font-size:15px;transition:color .3s}
+  .tabs .seg button.on{background:none;color:#fff}
+  /* 月見出しの前後ボタン */
+  .mhead{position:relative}
+  .mnav{position:absolute;top:50%;transform:translateY(-50%);width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--paper);color:var(--navy);display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:opacity .2s,border-color .2s}
+  .mnav svg{width:18px;height:18px}
+  .mnav.prev{left:2px} .mnav.next{right:2px}
+  .mnav:not([disabled]):active{border-color:var(--navy)}
+  .mnav[disabled]{opacity:0;pointer-events:none}
+  .panel.in-r{animation:slideR .35s ease} .panel.in-l{animation:slideL .35s ease}
+  @keyframes slideR{from{opacity:.2;transform:translateX(18px)}to{opacity:1;transform:none}}
+  @keyframes slideL{from{opacity:.2;transform:translateX(-18px)}to{opacity:1;transform:none}}
+  /* タップ案内 */
+  .tap{display:flex;align-items:center;gap:10px;width:fit-content;margin:14px auto 2px;padding:7px 18px 7px 7px;border:1px solid rgba(168,132,74,.55);border-radius:999px;background:linear-gradient(180deg,#fff,#fbf8f1)}
+  .tap .ring{position:relative;width:30px;height:30px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;flex:none}
+  .tap .ring svg{width:18px;height:18px}
+  .tap .ring::after{content:"";position:absolute;inset:-1px;border-radius:50%;border:1.5px solid var(--gold);animation:ripple 2.4s ease-out infinite}
+  @keyframes ripple{0%{transform:scale(1);opacity:.9}70%,100%{transform:scale(1.6);opacity:0}}
+  .tap .tx{display:flex;flex-direction:column;line-height:1.25;text-align:left}
+  .tap .tx i{font-family:var(--en);font-style:italic;font-weight:600;font-size:15px;color:var(--gold);letter-spacing:.03em}
+  .tap .tx em{font-style:normal;font-size:11px;font-weight:600;color:var(--navy);white-space:nowrap}
+  @media (prefers-reduced-motion:reduce){.tap .ring::after,.panel.in-r,.panel.in-l{animation:none}}
+
+  /* カレンダーの罫線（日付の境目を薄い線で区切る） */
+  .grid{gap:1px;background:var(--line);border:1px solid var(--line);border-radius:4px;overflow:hidden;margin-top:8px}
+  .dow{border-bottom:none}
+  .cell{border-bottom:none;background:#fff}
+  .cell.empty{background:#fafbfd}
+  .cell.pv{background:#fdf4f6}
+  .cell.ev{background:#fcf8ef}
+  .cell.pv.ev{background:linear-gradient(180deg,#fcf8ef,#fdf4f6)}
+  .cell:not(.empty):active{background:var(--soft)}
+  .cell.past{opacity:1} .cell.past > *{opacity:.35}
+  /* アイコン説明：1行に4つまで、入りきらない時は折り返し */
+  .key{display:flex;flex-wrap:wrap;justify-content:center;column-gap:12px;row-gap:0;margin-top:10px}
+  .key span{white-space:nowrap;margin:3px 0;line-height:1.3}
+  .key .kbr{flex-basis:100%;height:0;margin:0}
+  @media (max-width:359px){.tap{max-width:100%} .tap .tx em{white-space:normal}}
+
+  @media (min-width:440px){
+    .cell{min-height:78px}
+    .icons svg{width:20px;height:20px}
+    .icons{height:20px}
+    .pill .t{font-size:12px}
+  }
+  /* ── 起動画面・ホーム画面に追加の案内 ── */
   .splash{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:#082550;color:#e9d6ad;z-index:5;transition:opacity .4s}
   .splash img{width:120px;height:120px;border-radius:26px;box-shadow:0 8px 24px rgba(0,0,0,.35)}
   .splash p{margin:0;font-size:13px;letter-spacing:.2em}
@@ -29,11 +255,47 @@
   .a2hs .add{background:#1f2f8f;color:#fff;font-size:13px;padding:9px 14px;white-space:nowrap}
   .a2hs .done{display:block;background:none;color:#8a90a8;font-size:11px;font-weight:600;padding:4px 0 0;text-decoration:underline;text-align:left}
   .a2hs .x{background:none;color:#8a90a8;font-size:20px;line-height:1;padding:4px 6px}
+  .splash button{margin-top:6px;appearance:none;border:1px solid #e9d6ad;background:none;color:#e9d6ad;border-radius:999px;padding:8px 18px;font-family:inherit;font-size:13px}
 </style>
 </head>
 <body>
 <div class="splash" id="splash"><img src="icon-192.png" alt="Miraise"><p>読み込み中…</p></div>
-<iframe id="app" title="Miraise 営業カレンダー"></iframe>
+<div class="wrap">
+  <header class="brand">
+    <div class="shop" id="shop"></div>
+    <div class="sub" id="sub"></div>
+    <div class="ttl">営業カレンダー</div>
+  </header>
+
+  <nav class="tabs" id="tabs"></nav>
+
+  <section class="sec">
+    <div class="sec-h"><b>Open Hours</b><span>営業時間</span></div>
+    <div class="hours" id="hours"></div>
+  </section>
+
+  <section class="sec">
+    <div class="sec-h"><b>Today</b><span>本日の営業</span></div>
+    <div class="today-box" id="today"></div>
+    <div id="todayNotice"></div>
+  </section>
+
+  <section class="frame"><div class="panel" id="cal"></div></section>
+
+  <section class="sec" style="margin-top:20px">
+    <div class="sec-h"><b>Private Reservation</b><span id="plist-h">貸切のお知らせ</span></div>
+    <ul class="plist" id="plist"></ul>
+  </section>
+
+  <p class="note" id="note"></p>
+  <div class="foot" id="foot"></div>
+</div>
+
+<div id="sheetWrap">
+  <div class="sheet-bg" id="sheetBg"></div>
+  <div class="sheet" id="sheet" role="dialog" aria-modal="true"></div>
+</div>
+
 <div class="a2hs" id="a2hs" hidden>
   <img src="icon-192.png" alt="">
   <div class="t" id="a2hsText"></div>
@@ -41,17 +303,334 @@
   <button class="x" id="a2hsClose" aria-label="閉じる">×</button>
 </div>
 <script>
-  /* ▼ ここにApps ScriptのウェブアプリURL（https://script.google.com/macros/s/…/exec）を貼り付けてください */
-  const APP_URL = 'https://script.google.com/macros/s/AKfycbwg4QAHx_zjR3o8gjYRAPnjfaMrdoaywfCX5JAE06LRdmnb8n0CtrCAWUI7ZCpbivQf/exec';
+  /* ▼ Apps ScriptのウェブアプリURL（カレンダーのデータを読み込む先） */
+  const API_URL = 'https://script.google.com/macros/s/AKfycbwg4QAHx_zjR3o8gjYRAPnjfaMrdoaywfCX5JAE06LRdmnb8n0CtrCAWUI7ZCpbivQf/exec';
+  let DATA = null;
+  const EN_MONTH = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const JA_DOW = ['日','月','火','水','木','金','土'];
 
-  const app = document.getElementById('app');
-  const splash = document.getElementById('splash');
-  app.addEventListener('load', function () { splash.classList.add('hide'); });
-  setTimeout(function () { splash.classList.add('hide'); }, 8000);
-  app.src = APP_URL;
+  function svg(cls, label, body) {
+    return '<svg class="' + cls + '" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-label="' + label + '">' + body + '</svg>';
+  }
+  const ICON = {
+    lunch: svg('i-lunch', 'ランチ',
+      '<path d="M11 3.5c-1.4 1.6 1.4 2.8 0 4.6M15.5 2.5c-1.4 1.6 1.4 2.8 0 4.6M20 3.5c-1.4 1.6 1.4 2.8 0 4.6"/>' +
+      '<path d="M5 11.5h18v7.5a6.5 6.5 0 0 1-6.5 6.5h-5A6.5 6.5 0 0 1 5 19z"/><path d="M23 13.5h1.8a3.2 3.2 0 0 1 0 6.4H22.6"/><path d="M3.5 29h22"/>'),
+    bar: svg('i-bar', 'バー',
+      '<path d="M5 6h22L16 17.5z"/><path d="M9 10h14"/><path d="M16 17.5V27"/><path d="M10 28h12"/><path d="M24.5 2.5L20 9"/><circle cx="19.5" cy="8" r="1.4" fill="currentColor"/>'),
+    // 休み：塗りつぶしの「休」バッジ（貸切より目立つ）
+    '休み': '<span class="offb" aria-label="休み">休</span>',
+    // ランチ休み・バー休み：濃紺の丸に白いアイコン＋斜線
+    'ランチ休み': '<span class="offi" aria-label="ランチ休み"><svg viewBox="0 0 32 32" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">' +
+      '<path d="M7 12h15v6.5a5.5 5.5 0 0 1-5.5 5.5h-4A5.5 5.5 0 0 1 7 18.5z"/><path d="M22 14h1.5a2.8 2.8 0 0 1 0 5.6H22"/><path d="M6 27h18"/><path d="M5 5l22 22" stroke="#e8a0ad" stroke-width="3"/></svg></span>',
+    'バー休み': '<span class="offi" aria-label="バー休み"><svg viewBox="0 0 32 32" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">' +
+      '<path d="M7 7h18L16 17z"/><path d="M16 17v8"/><path d="M11 26h10"/><path d="M5 5l22 22" stroke="#e8a0ad" stroke-width="3"/></svg></span>',
+    'イベント': svg('i-gold', 'イベント',
+      '<path d="M15 4l2.4 7.1L24.5 13.5l-7.1 2.4L15 23l-2.4-7.1L5.5 13.5l7.1-2.4z"/><path d="M25 21v6M22 24h6"/>')
+  };
 
+  let cur = 0;
+  let todayDay = null, todayMonth = null;
+  function findToday() {
+    todayDay = null; todayMonth = null;
+    DATA.months.forEach(function (mo) {
+      mo.days.forEach(function (d) { if (d.today) { todayDay = d; todayMonth = mo; } });
+    });
+  }
+
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  // 時刻の「〜」を和文の約物として位置調整
+  function tx(s) { return esc(s).replace(/\s*[〜~～]\s*/g, '<span class="tl">〜</span>'); }
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function keyOf(mo, d) { return mo.y + '-' + pad(mo.m) + '-' + pad(d.d); }
+  function has(day, kind) { return day.priv.some(function (p) { return p.kind === kind; }); }
+  function range(p) {
+    if (p.kind === 'all') return '終日';
+    const t = p.s ? p.s + '〜' + (p.e || '') : '';
+    if (p.kind === 'lunch') return 'ランチ' + (t ? ' ' + t : '');
+    if (p.kind === 'bar') return 'バー' + (t ? ' ' + t : '');
+    return t;
+  }
+  function shortRange(p) {
+    if (p.kind === 'all') return '終日';
+    if (p.kind === 'lunch') return 'ランチ';
+    if (p.kind === 'bar') return 'バー';
+    const s = p.s.split(':'), e = (p.e || '').split(':');
+    if (s[1] === '00' && e[1] === '00') return s[0] + '-' + e[0];
+    return p.s + '〜';
+  }
+  function splitHours(t) {
+    const m = String(t || '').match(/^([^（(]*)[（(](.*)[)）]\s*$/);
+    return m ? [m[1].trim(), m[2].trim()] : [String(t || ''), ''];
+  }
+  function isClosed(day) { return !day.lunch && !day.bar && !day.priv.length; }
+  function plain(html) { return html.replace(/class="i-[^"]*"/, ''); }
+
+  /* カレンダー1日分のアイコン（アイコン表示の指定 → 営業どおり の順） */
+  function dayIcons(day) {
+    const keys = [];
+    const mode = day.mode;
+    if (mode === 'ランチ・バー') keys.push('lunch', 'bar');
+    else if (mode === 'ランチのみ') keys.push('lunch');
+    else if (mode === 'バーのみ') keys.push('bar');
+    else if (mode !== 'なし') {
+      if (day.lunch) keys.push('lunch');
+      if (day.bar) keys.push('bar');
+      if (isClosed(day)) keys.push('休み');
+    }
+    if (day.icon && ICON[day.icon] && keys.indexOf(day.icon) === -1) {
+      // ランチ休み・バー休みを両方の代わりに使う日は「休」バッジを重ねない
+      if ((day.icon === 'ランチ休み' || day.icon === 'バー休み') && keys.indexOf('休み') !== -1 && !(day.lunch || day.bar)) keys.splice(keys.indexOf('休み'), 1);
+      if (day.icon === 'ランチ休み') keys.unshift(day.icon); else keys.push(day.icon); // ランチの位置に表示
+    }
+    return keys;
+  }
+
+  /* 営業状況の行 */
+  function dayRows(day, onDark) {
+    const b = splitHours(DATA.barHours);
+    const all = has(day, 'all');
+    function row(key, label, open, reserved, hours) {
+      const st = reserved ? '<span class="st pv">貸切</span>' : open ? '<span class="st ok">営業</span>' : '<span class="st no">お休み</span>';
+      return '<li>' + (onDark ? plain(ICON[key]) : ICON[key]) + '<span class="lbl">' + label + '</span><span class="tm">' +
+        (open || reserved ? tx(hours) : '—') + '</span>' + st + '</li>';
+    }
+    return row('lunch', 'ランチ', day.lunch, all || has(day, 'lunch'), DATA.lunchHours) +
+           row('bar', 'バー', day.bar, all || has(day, 'bar'), b[0]);
+  }
+  function extraRows(day, onDark, withNote) {
+    let h = '';
+    day.priv.forEach(function (p) {
+      h += '<li class="' + (withNote ? 'pvrow' : '') + '"><span class="st pv">貸切</span><span class="tm">' + tx(range(p)) +
+        (withNote ? '<small>この時間帯は貸切のため、一般のご利用はいただけません</small>' : '') + '</span></li>';
+    });
+    const showIc = day.icon === 'イベント';
+    if (showIc || day.text || day.info) {
+      const ic = showIc ? (onDark ? plain(ICON[day.icon]) : ICON[day.icon]) : '';
+      h += '<li class="inforow">' + ic + '<span class="info"><b>' + esc(day.text || day.icon || '') + '</b>' +
+        (day.info ? '<small>' + esc(day.info) + '</small>' : '') + '</span></li>';
+    }
+    return h;
+  }
+
+  /* お知らせ（指定日に表示中のもの） */
+  function noticesOn(k) {
+    return (DATA.notices || []).filter(function (n) { return n.from <= k && k <= n.to; });
+  }
+  function noticeCards(list) {
+    return list.map(function (n) {
+      const period = n.from === n.to ? fmtD(n.from) : fmtD(n.from) + '<span class="tl">〜</span>' + fmtD(n.to);
+      return '<article class="notice">' +
+        (n.img ? '<img src="' + esc(n.img) + '" alt="" loading="lazy" onerror="this.remove()">' : '') +
+        '<div class="nb"><span class="np">' + period + '</span>' +
+        (n.title ? '<h4>' + esc(n.title) + '</h4>' : '') +
+        (n.body ? '<p>' + esc(n.body) + '</p>' : '') + '</div></article>';
+    }).join('');
+  }
+  function fmtD(k) { const a = k.split('-'); return Number(a[1]) + '/' + Number(a[2]); }
+
+  /* 営業時間 */
+  function renderHours() {
+    const b = splitHours(DATA.barHours), l = splitHours(DATA.lunchHours);
+    document.getElementById('hours').innerHTML =
+      '<div class="hcard"><span class="t">' + ICON.lunch + 'ランチ</span><span class="tm">' + tx(l[0]) + '</span>' +
+        (l[1] ? '<span class="lo">' + esc(l[1]) + '</span>' : '') + '</div>' +
+      '<div class="hcard"><span class="t">' + ICON.bar + 'バー</span><span class="tm">' + tx(b[0]) + '</span>' +
+        (b[1] ? '<span class="lo">' + esc(b[1]) + '</span>' : '') + '</div>';
+  }
+
+  /* 本日の営業＋お知らせ */
+  function renderToday() {
+    const el = document.getElementById('today');
+    if (!todayDay) { el.innerHTML = '<p class="closed">本日の情報はありません</p>'; return; }
+    const d = todayDay, mo = todayMonth;
+    let h = '<div class="dt"><b>' + mo.m + '.' + d.d + '</b><span>' + JA_DOW[d.dow] + '曜日' + (d.hol ? '・' + esc(d.hol) : '') + '</span></div>';
+    if (isClosed(d)) h += '<p class="closed">' + ICON['休み'] + '本日はお休みです</p><ul>' + extraRows(d, true) + '</ul>';
+    else h += '<ul>' + dayRows(d, true) + extraRows(d, true) + '</ul>';
+    el.innerHTML = h;
+    renderNotices();
+  }
+
+  /* 本日の営業の下のお知らせ：表示中の月と期間が重なり、まだ終わっていないものだけ */
+  function renderNotices() {
+    const mo = DATA.months[cur];
+    const from = keyOf(mo, mo.days[0]), to = keyOf(mo, mo.days[mo.days.length - 1]);
+    const list = (DATA.notices || []).filter(function (n) {
+      return n.from <= to && n.to >= from && n.to >= DATA.today;
+    });
+    document.getElementById('todayNotice').innerHTML = noticeCards(list);
+  }
+
+  /* 月切替 */
+  function renderTabs() {
+    const el = document.getElementById('tabs');
+    if (!el.firstChild) {
+      el.innerHTML = '<div class="seg" style="--n:' + DATA.months.length + '"><span class="ind"></span>' + DATA.months.map(function (mo, mi) {
+        return '<button data-mi="' + mi + '">' + mo.m + '月<small>' + EN_MONTH[mo.m - 1].slice(0, 3) + '.</small></button>';
+      }).join('') + '</div>';
+    }
+    el.firstChild.style.setProperty('--i', cur);
+    Array.prototype.forEach.call(el.querySelectorAll('button'), function (b, i) { b.classList.toggle('on', i === cur); });
+  }
+
+  function goMonth(i) {
+    if (i < 0 || i >= DATA.months.length || i === cur) return;
+    const dir = i > cur ? 'in-r' : 'in-l';
+    cur = i;
+    renderTabs(); renderCal(); renderPlist(); renderNotices();
+    const panel = document.querySelector('.panel');
+    panel.classList.remove('in-l', 'in-r'); void panel.offsetWidth; panel.classList.add(dir);
+  }
+
+  /* 営業カレンダー */
+  function renderCal() {
+    const mo = DATA.months[cur];
+    const arrow = function (dir) {
+      const dis = dir < 0 ? cur === 0 : cur === DATA.months.length - 1;
+      return '<button class="mnav ' + (dir < 0 ? 'prev' : 'next') + '" data-go="' + dir + '"' + (dis ? ' disabled' : '') + ' aria-label="' + (dir < 0 ? '前の月' : '次の月') + '">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="' + (dir < 0 ? 'M14.5 6l-6 6 6 6' : 'M9.5 6l6 6-6 6') + '"/></svg></button>';
+    };
+    let h = '<div class="mhead">' + (DATA.months.length > 1 ? arrow(-1) : '') + '<span class="num">' + mo.m + '</span><span class="en"><span class="yr">' + mo.y + '</span>' + EN_MONTH[mo.m - 1] + '</span>' + (DATA.months.length > 1 ? arrow(1) : '') + '</div>' +
+      '<div class="dow"><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span class="sa">土</span><span class="su">日</span></div><div class="grid">';
+    const lead = (mo.days[0].dow + 6) % 7; // 月曜始まり
+    for (let i = 0; i < lead; i++) h += '<div class="cell empty"></div>';
+    const used = {};       // この月に表示しているアイコン
+    let usedPriv = false;  // この月に貸切があるか
+    mo.days.forEach(function (day, i) {
+      const keys = dayIcons(day);
+      keys.forEach(function (k) { used[k] = true; });
+      if (day.priv.length) usedPriv = true;
+      const off = keys.indexOf('休み') !== -1;
+      const cls = ['cell', day.red ? 'red' : '', day.past ? 'past' : '', day.today ? 'today' : '', off ? 'off' : '',
+        day.priv.length ? 'pv' : '', day.icon === 'イベント' ? 'ev' : ''].join(' ');
+      let pv = '';
+      if (day.priv.length) {
+        pv = '<span class="pill"><span class="k">貸切</span><span class="t">' + tx(shortRange(day.priv[0])) + '</span></span>' +
+          (day.priv.length > 1 ? '<span class="more">他' + (day.priv.length - 1) + '件</span>' : '');
+      }
+      h += '<div class="' + cls + '" data-i="' + i + '"><span class="n">' + day.d + '</span>' +
+        (keys.length ? '<div class="icons n' + keys.length + '">' + keys.map(function (k) { return ICON[k]; }).join('') + '</div>' : '') + pv +
+        (day.text ? '<span class="ctext">' + esc(day.text) + '</span>' : '') + '</div>';
+    });
+    const tail = (7 - (lead + mo.days.length) % 7) % 7;
+    for (let i = 0; i < tail; i++) h += '<div class="cell empty"></div>';
+    // アイコン説明：この月に表示しているものだけ
+    const KEY_ORDER = [['lunch', 'ランチ'], ['bar', 'バー'], ['休み', '休み'], ['ランチ休み', 'ランチ休み'], ['バー休み', 'バー休み'], ['貸切', '貸切'], ['イベント', 'イベント']];
+    const key = KEY_ORDER.filter(function (x) { return x[0] === '貸切' ? usedPriv : used[x[0]]; }).map(function (x, i) {
+      // 5つ目からは2行目へ（4つごとに改行）
+      return (i > 0 && i % 4 === 0 ? '<b class="kbr"></b>' : '') +
+        '<span>' + (x[0] === '貸切' ? '<i class="mini">貸切</i>' : ICON[x[0]]) + x[1] + '</span>';
+    }).join('');
+    const keyCount = KEY_ORDER.filter(function (x) { return x[0] === '貸切' ? usedPriv : used[x[0]]; }).length;
+    h += '</div>' + (key ? '<div class="key" style="--kc:' + Math.min(4, keyCount) + '">' + key + '</div>' : '') +
+      '<p class="tap"><span class="ring"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11.5V6a1.5 1.5 0 0 1 3 0v4.5"/><path d="M12 10a1.5 1.5 0 0 1 3 0v1.5"/><path d="M15 11a1.5 1.5 0 0 1 3 0v4a6 6 0 0 1-6 6h-.6a5 5 0 0 1-4-2l-2.6-3.6a1.5 1.5 0 0 1 2.3-1.9L9 15.5"/></svg></span>' +
+      '<span class="tx"><i>Tap a date</i><em>日付をタップすると詳細をご覧いただけます</em></span></p>';
+    document.getElementById('cal').innerHTML = h;
+  }
+
+  /* 貸切のお知らせ */
+  function renderPlist() {
+    const mo = DATA.months[cur];
+    document.getElementById('plist-h').textContent = mo.m + '月の貸切のお知らせ';
+    const items = [];
+    mo.days.forEach(function (day) {
+      if (day.past) return;
+      day.priv.forEach(function (p) {
+        items.push('<li><span class="d">' + mo.m + '/' + day.d + '<small>（' + JA_DOW[day.dow] + '）</small></span><span class="t"><i>貸切</i><span class="tt">' + tx(range(p)) + '</span></span></li>');
+      });
+    });
+    document.getElementById('plist').innerHTML = items.length ? items.join('') : '<li class="none">現在、貸切のご予定はありません</li>';
+  }
+
+  /* 日付の詳細（下から表示） */
+  function openSheet(i) {
+    const mo = DATA.months[cur], d = mo.days[i];
+    let h = '<div class="grab"></div><div class="dt"><b>' + mo.m + '.' + d.d + '</b><span>' + JA_DOW[d.dow] + '曜日' + (d.hol ? '・' + esc(d.hol) : '') + '</span>' +
+      (isClosed(d) ? ICON['休み'] : '') + '</div><ul>' + dayRows(d, false) + extraRows(d, false, true) + '</ul>' +
+      noticeCards(noticesOn(keyOf(mo, d))) + '<button class="close" id="closeBtn">閉じる</button>';
+    document.getElementById('sheet').innerHTML = h;
+    document.getElementById('sheetWrap').classList.add('open');
+    document.getElementById('closeBtn').onclick = closeSheet;
+  }
+  function closeSheet() { document.getElementById('sheetWrap').classList.remove('open'); }
+
+  function renderStatic() {
+    document.getElementById('shop').textContent = DATA.shop;
+    document.getElementById('sub').textContent = DATA.sub;
+    document.getElementById('foot').textContent = String(DATA.shop).toUpperCase() + ' ' + DATA.sub;
+    document.getElementById('note').textContent = DATA.note || '';
+  }
+
+  document.getElementById('tabs').addEventListener('click', function (e) {
+    const b = e.target.closest('button');
+    if (b) goMonth(Number(b.dataset.mi));
+  });
+  document.getElementById('cal').addEventListener('click', function (e) {
+    const nav = e.target.closest('.mnav');
+    if (nav) { if (!nav.disabled) goMonth(cur + Number(nav.dataset.go)); return; }
+    const c = e.target.closest('.cell:not(.empty)');
+    if (c) openSheet(Number(c.dataset.i));
+  });
+  document.getElementById('sheetBg').addEventListener('click', closeSheet);
+  // カレンダーを左右にスワイプして月を切り替え
+  (function () {
+    const cal = document.getElementById('cal');
+    let x0 = null, y0 = null;
+    cal.addEventListener('touchstart', function (e) { x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; }, { passive: true });
+    cal.addEventListener('touchend', function (e) {
+      if (x0 === null) return;
+      const dx = e.changedTouches[0].clientX - x0, dy = e.changedTouches[0].clientY - y0;
+      if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) goMonth(cur + (dx < 0 ? 1 : -1));
+      x0 = null;
+    }, { passive: true });
+  })();
+
+  /* ── データの読み込み ──
+     前回のデータ（今日のもの）があればすぐに表示し、裏で最新データを取得して差し替えます */
+  const CACHE_KEY = 'miraise-cal-data';
+  function jstToday() { return new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10); }
+  function renderAll() {
+    findToday();
+    if (cur >= DATA.months.length) cur = 0;
+    document.getElementById('tabs').innerHTML = '';
+    renderStatic(); renderTabs(); renderHours(); renderToday(); renderCal(); renderPlist();
+  }
+  function hideSplash() { document.getElementById('splash').classList.add('hide'); }
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null'); } catch (e) {}
+  if (saved && saved.today === jstToday() && saved.months) { DATA = saved; renderAll(); hideSplash(); }
+  function load() {
+    fetch(API_URL + '?format=json&t=' + Date.now())
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!d || !d.months) throw new Error('no data');
+        const s = JSON.stringify(d);
+        if (!DATA || s !== JSON.stringify(DATA)) { DATA = d; renderAll(); }
+        try { localStorage.setItem(CACHE_KEY, s); } catch (e) {}
+        hideSplash();
+      })
+      .catch(function () {
+        if (DATA) return;
+        document.querySelector('#splash p').innerHTML = '読み込めませんでした<br>通信環境をご確認ください';
+        if (!document.querySelector('#splash button')) {
+          const b = document.createElement('button'); b.textContent = 'もう一度読み込む';
+          b.onclick = function () { document.querySelector('#splash p').textContent = '読み込み中…'; load(); };
+          document.getElementById('splash').appendChild(b);
+        }
+      });
+  }
+  load();
+  // アプリに戻ってきたときも最新に
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible' && DATA) load(); });
+</script>
+<script>
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function () {});
 
+(function () {
   /* ── ホーム画面への追加の案内 ──
      ・ホーム画面のアプリから開いたときは表示しない
      ・ブラウザで開いたときは、ホーム画面に追加されていなければ表示する
@@ -136,6 +715,7 @@
       }).catch(function () { go('確認できず'); });
     } else go('確認できない端末');
   }, 2500);
+})();
 </script>
 </body>
 </html>
