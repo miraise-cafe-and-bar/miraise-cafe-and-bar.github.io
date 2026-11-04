@@ -65,6 +65,8 @@
   const isIOS = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && 'ontouchend' in document);
   const isLINE = / Line\//i.test(ua);
   const isAndroid = /Android/i.test(ua);
+  // LINEから開いたとき（LINE内ブラウザ、またはURLの最後が ?from=line）は「ホーム画面に追加」の案内を出さない
+  const fromLINE = isLINE || params.get('from') === 'line';
   const box = document.getElementById('a2hs'), text = document.getElementById('a2hsText'), add = document.getElementById('a2hsAdd');
   const store = {
     get: function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
@@ -84,7 +86,7 @@
   let deferred = null, timer = null, shown = false;
   function hide() { box.hidden = true; clearTimeout(timer); }
   function show(html, withButton) {
-    if (standalone || shown) return;
+    if (standalone || shown || (fromLINE && mode !== 'debug')) return;
     shown = true;
     text.innerHTML = html + '<button class="done" id="a2hsDone">追加済みの方はこちら</button>';
     add.hidden = !withButton; box.hidden = false;
