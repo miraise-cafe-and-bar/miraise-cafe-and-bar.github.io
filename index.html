@@ -14,7 +14,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;0,700;1,600&family=Noto+Serif+JP:wght@500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;0,700;1,600&family=Noto+Serif+JP:wght@500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;0,700;1,600&family=Noto+Serif+JP:wght@500;600;700&display=swap" rel="stylesheet"></noscript>
 <style>
   :root{
     --navy:#1f2f8f; --navy-d:#16226b; --paper:#ffffff; --bg:#f5f5f1; --line:#e1e5f2;
@@ -241,9 +242,10 @@
     .pill .t{font-size:12px}
   }
   /* ── 起動画面・ホーム画面に追加の案内 ── */
-  .splash{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:#082550;color:#e9d6ad;z-index:5;transition:opacity .4s}
-  .splash img{width:120px;height:120px;border-radius:26px;box-shadow:0 8px 24px rgba(0,0,0,.35)}
-  .splash p{margin:0;font-size:13px;letter-spacing:.2em}
+  .splash{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:#082550;color:#e9d6ad;z-index:5;transition:opacity .3s}
+  .splash img{width:112px;height:112px;border-radius:24px;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+  .splash p{margin:0;font-size:13px;letter-spacing:.2em;opacity:0;animation:splashText .4s ease 1s forwards} /* すぐ読み込めた時は文字を出さない */
+  @keyframes splashText{to{opacity:1}}
   .splash.hide{opacity:0;pointer-events:none}
   [hidden]{display:none !important} /* 非表示の指定を必ず優先（案内が空のまま出続ける不具合の修正） */
   .a2hs{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));z-index:6;display:flex;align-items:center;gap:12px;
@@ -259,7 +261,7 @@
 </style>
 </head>
 <body>
-<div class="splash" id="splash"><img src="icon-192.png" alt="Miraise"><p>読み込み中…</p></div>
+<div class="splash" id="splash"><img src="data:image/jpeg;base64,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" alt="Miraise" width="112" height="112"><p>読み込み中…</p></div>
 <div class="wrap">
   <header class="brand">
     <div class="shop" id="shop"></div>
@@ -599,10 +601,16 @@
     document.getElementById('tabs').innerHTML = '';
     renderStatic(); renderTabs(); renderHours(); renderToday(); renderCal(); renderPlist();
   }
-  function hideSplash() { document.getElementById('splash').classList.add('hide'); }
+  function hideSplash(instant) {
+    const sp = document.getElementById('splash');
+    if (!sp) return;
+    if (instant) { sp.remove(); return; }            // 前回のデータで表示できる時は、起動画面を出さずにすぐ表示
+    sp.classList.add('hide');
+    setTimeout(function () { sp.remove(); }, 400);
+  }
   let saved = null;
   try { saved = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null'); } catch (e) {}
-  if (saved && saved.today === jstToday() && saved.months) { DATA = saved; renderAll(); hideSplash(); }
+  if (saved && saved.today === jstToday() && saved.months) { DATA = saved; renderAll(); hideSplash(true); }
   function load() {
     fetch(API_URL + '?format=json&t=' + Date.now())
       .then(function (r) { return r.json(); })
@@ -614,7 +622,7 @@
         hideSplash();
       })
       .catch(function () {
-        if (DATA) return;
+        if (DATA || !document.getElementById('splash')) return;
         document.querySelector('#splash p').innerHTML = '読み込めませんでした<br>通信環境をご確認ください';
         if (!document.querySelector('#splash button')) {
           const b = document.createElement('button'); b.textContent = 'もう一度読み込む';
